@@ -31,7 +31,10 @@
 - 📸 **视觉感知**：理解井字棋棋盘的视觉状态
 - 💭 **语言推理**：分析当前局面并进行战术思考
 - 🎯 **动作决策**：选择最优的下棋位置
+
+
 [报告](./VLA/VLA_FINETUNE_REPORT.md)
+<img width="977" height="676" alt="image" src="https://github.com/user-attachments/assets/5908a184-c77f-4b29-984b-a913581778e4" />
 
 ## 部署说明
 
