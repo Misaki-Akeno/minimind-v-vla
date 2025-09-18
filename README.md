@@ -67,6 +67,7 @@ git clone https://huggingface.co/jingyaogong/MiniMind2-V
 ### 训练命令
 ```bash
 # 生成训练数据
+rm VLA/data/ttt_alpaca.jsonl VLA/data/splits/ttt_test.jsonl VLA/data/splits/ttt_train.jsonl VLA/data/splits/ttt_val.jsonl
 python VLA/envs/generate_dataset.py
 
 # 开始训练
