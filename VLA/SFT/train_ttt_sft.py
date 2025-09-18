@@ -16,10 +16,10 @@ from transformers import AutoTokenizer
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from model.model_vlm import VLMConfig
-from VLA.model_wrapper import MiniMindVLMWithAction
-from VLA.ttt_dataset import TicTacToeVLMDataset
-from VLA.early_stopping import EarlyStopping
-from VLA.evaluate import evaluate_model
+from VLA.envs.model_wrapper import MiniMindVLMWithAction
+from VLA.envs.ttt_dataset import TicTacToeVLMDataset
+from VLA.SFT.early_stopping import EarlyStopping
+from VLA.SFT.evaluate import evaluate_model
 
 # 减少 fork 后 tokenizers 的并行警告
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")

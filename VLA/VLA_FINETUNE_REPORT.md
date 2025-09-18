@@ -167,21 +167,23 @@ X在第1行有一子，O在中心位置有优势
 ## 项目文件结构
 ```
 VLA/
-├── model_wrapper.py          # VLA模型包装器
-├── ttt_dataset.py           # 井字棋数据集
-├── train_ttt_sft.py         # 训练脚本
-├── test_ttt_model.py        # 测试脚本
-├── play.py                  # 人机对战游戏
-├── evaluate.py              # 评估工具
-├── early_stopping.py        # 早停机制
+├── SFT/
+│   ├── README.md                # SFT项目说明
+│   ├── early_stopping.py        # 早停机制
+│   ├── evaluate.py              # 评估工具
+│   ├── test_ttt.sh              # 测试脚本（Shell）
+│   ├── test_ttt_model.py        # 测试脚本
+│   ├── train_ttt.sh             # 训练脚本（Shell）
+│   └── train_ttt_sft.py         # 训练脚本
+├── VLA_FINETUNE_REPORT.md       # 微调报告
+├── play.py                      # 人机对战游戏
+├── play.sh                      # 游戏启动脚本
 ├── envs/
-│   ├── tic_tac_toe_env.py   # 游戏环境
-│   └── generate_dataset.py  # 数据生成
+│   ├── tic_tac_toe_env.py       # 游戏环境
+│   ├── generate_dataset.py      # 数据生成
+│   └── __pycache__/
 ├── data/
-│   ├── ttt_alpaca.jsonl     # 训练数据
-│   ├── images/              # 棋盘图像
-│   └── splits/              # 数据划分
-└── test_results/            # 测试结果
+└── wandb/                       # Weights & Biases日志
 ```
 
 ## 未来改进方向

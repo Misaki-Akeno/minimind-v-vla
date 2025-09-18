@@ -23,8 +23,8 @@ import numpy as np
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from model.model_vlm import VLMConfig
-from VLA.model_wrapper import MiniMindVLMWithAction
-from VLA.ttt_dataset import TicTacToeVLMDataset
+from VLA.envs.model_wrapper import MiniMindVLMWithAction
+from VLA.envs.ttt_dataset import TicTacToeVLMDataset
 from transformers import AutoTokenizer
 
 # 固定配置（与训练时保持一致）
