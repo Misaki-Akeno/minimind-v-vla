@@ -132,3 +132,4 @@ Thumbs.db
 *.png
 wandb/
 *.pth
+test_results/

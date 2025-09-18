@@ -50,7 +50,8 @@ class TicTacToeEnv(gym.Env):
         render_mode: Optional[str] = None,
         difficulty: Difficulty = Difficulty.MEDIUM,
         human_player: bool = False,
-        board_size: int = 300
+        board_size: int = 300,
+        use_internal_ai: bool = True,
     ):
         """
         Initialize the Tic Tac Toe environment.
@@ -69,6 +70,8 @@ class TicTacToeEnv(gym.Env):
         self.human_player = human_player
         self.board_size = board_size
         self.cell_size = board_size // 3
+        # Whether to let environment control O automatically. Set to False when an external agent (e.g., VLA) plays O.
+        self.use_internal_ai = use_internal_ai
         
         # Gymnasium spaces
         self.observation_space = spaces.Box(
@@ -156,8 +159,8 @@ class TicTacToeEnv(gym.Env):
                 # Switch player
                 self.current_player = Player.O if self.current_player == Player.X else Player.X
                 
-                # If it's AI's turn, make AI move
-                if self.current_player == Player.O and not self.game_over:
+                # If it's AI's turn, make AI move (only when internal AI is enabled)
+                if self.use_internal_ai and self.current_player == Player.O and not self.game_over:
                     ai_action = self._get_ai_action()
                     if ai_action is not None:
                         ai_row, ai_col = divmod(ai_action, 3)

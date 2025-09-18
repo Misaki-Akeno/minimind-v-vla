@@ -26,6 +26,66 @@
 
 </div>
 
+本项目基于 MiniMind-V 视觉语言模型，成功实现了一个可以进行井字棋游戏的 VLA (Vision-Language-Action) 智能体。该智能体能够：
+
+- 📸 **视觉感知**：理解井字棋棋盘的视觉状态
+- 💭 **语言推理**：分析当前局面并进行战术思考
+- 🎯 **动作决策**：选择最优的下棋位置
+[报告](./VLA/VLA_FINETUNE_REPORT.md)
+
+## 部署说明
+
+### 环境要求
+安装原项目后添加pygame gymnasium即可
+```bash
+# 克隆代码仓库
+git clone https://github.com/Misaki-Akeno/minimind-v-vla
+```
+```bash
+# 下载clip模型到 ./model/vision_model 目录下
+git clone https://huggingface.co/openai/clip-vit-base-patch16
+# or
+git clone https://www.modelscope.cn/models/openai-mirror/clip-vit-base-patch16
+```
+```bash
+# 下载纯语言模型权重到 ./out 目录下（作为训练VLM的基座语言模型）
+https://huggingface.co/jingyaogong/MiniMind2-V-PyTorch/blob/main/lm_512.pth
+# or
+https://huggingface.co/jingyaogong/MiniMind2-V-PyTorch/blob/main/lm_768.pth
+```
+```bash
+# 创建conda环境
+conda create -n minimind-v python=3.10
+conda activate minimind-v
+pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+pip install pygame gymnasium pillow numpy wandb tqdm -i https://pypi.tuna.tsinghua.edu.cn/simple
+```
+```bash
+git clone https://huggingface.co/jingyaogong/MiniMind2-V
+```
+
+### 训练命令
+```bash
+# 生成训练数据
+python VLA/envs/generate_dataset.py
+
+# 开始训练
+conda run --no-capture-output -n minimind-v python VLA/train_ttt_sft.py
+
+# 测试模型
+conda run --no-capture-output -n minimind-v python VLA/test_ttt_model.py \
+    --model_path out/sft_vlm_ttt_768.pth
+```
+
+### 运行游戏
+```bash
+# 人机对战
+conda run --no-capture-output -n minimind-v python VLA/play.py \
+    --model_path out/sft_vlm_ttt_768.pth
+```
+
+
+## 原始项目说明
 * 此项目旨在从0开始，仅用1.3块钱成本 + 1小时！即可训练出26M参数的超小多模态视觉语言模型**MiniMind-V**。
 * **MiniMind-V**最小版本体积仅为 GPT3 的约 $\frac{1}{7000}$，力求做到个人GPU也可快速推理甚至训练。
 * **MiniMind-V**是[MiniMind](https://github.com/jingyaogong/minimind)纯语言模型的视觉能力额外拓展。
