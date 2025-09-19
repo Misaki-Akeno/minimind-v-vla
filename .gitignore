@@ -133,3 +133,4 @@ Thumbs.db
 wandb/
 *.pth
 test_results/
+VLA/data/
