@@ -6,14 +6,13 @@ import time
 
 import torch
 import torch.distributed as dist
+from tqdm import tqdm
 from contextlib import nullcontext
 from torch import nn, optim
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader, DistributedSampler
 from transformers import AutoTokenizer
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from model.model_vlm import VLMConfig
 from VLA.envs.model_wrapper import MiniMindVLMWithAction
@@ -27,7 +26,7 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 # 固定与 MiniMind2-V 匹配的模型与权重配置（写死，保证最大匹配）
-CKPT_DEFAULT = "/pub_data/Codes/minimind-v/MiniMind2-V/pytorch_model.bin"
+CKPT_DEFAULT = "MiniMind2-V/pytorch_model.bin"
 HIDDEN_SIZE = 768
 NUM_LAYERS = 16
 MAX_SEQ_LEN = 512
@@ -46,7 +45,8 @@ def train_epoch(epoch, wandb, val_loader=None, early_stopping=None):
     loss_fct = nn.CrossEntropyLoss(reduction='none')
     start_time = time.time()
     model.train()
-    for step, batch in enumerate(train_loader):
+    pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{args.epochs}")
+    for step, batch in enumerate(pbar):
         # 兼容 Dataset 的 dict 返回
         X = batch['input_ids'].to(args.device)
         Y = batch['labels'].to(args.device)
@@ -93,18 +93,10 @@ def train_epoch(epoch, wandb, val_loader=None, early_stopping=None):
             # 动作准确率
             with torch.no_grad():
                 acc = (action_logits.argmax(dim=-1) == action).float().mean().item()
-            Logger(
-                'Epoch:[{}/{}]({}/{}) loss:{:.3f} lm_loss:{:.3f} act_loss:{:.3f} act_acc:{:.3f} lr:{:.7f} epoch_Time:{}min:'.format(
-                    epoch + 1,
-                    args.epochs,
-                    step,
-                    iter_per_epoch,
-                    loss.item(),
-                    loss_lm.item(),
-                    loss_action.item(),
-                    acc,
-                    optimizer.param_groups[-1]['lr'],
-                    spend_time / (step + 1) * iter_per_epoch // 60 - spend_time // 60))
+            pbar.set_postfix({
+                'loss': f'{loss.item():.3f}',
+                'act_acc': f'{acc:.2f}',
+            })
 
             if (wandb is not None) and ((not ddp) or dist.get_rank() == 0):
                 wandb.log({"loss": loss,
@@ -116,12 +108,7 @@ def train_epoch(epoch, wandb, val_loader=None, early_stopping=None):
 
         # 验证和早停检查
         if val_loader is not None and early_stopping is not None and (step + 1) % args.val_interval == 0:
-            Logger(f"Step {step + 1}: 开始验证...")
             val_metrics = evaluate_model(model, val_loader, args.device, max_eval_steps=args.max_val_steps)
-            
-            Logger(f"验证结果 - 动作准确率: {val_metrics['action_accuracy']:.4f}, "
-                   f"语言模型损失: {val_metrics['avg_lm_loss']:.4f}, "
-                   f"动作损失: {val_metrics['avg_action_loss']:.4f}")
             
             # 记录到wandb
             if (wandb is not None) and ((not ddp) or dist.get_rank() == 0):
@@ -133,7 +120,6 @@ def train_epoch(epoch, wandb, val_loader=None, early_stopping=None):
             
             # 早停检查
             if early_stopping.update(val_metrics['action_accuracy']):
-                Logger("触发早停，停止训练!")
                 return True  # 返回True表示早停
             
             model.train()  # 恢复训练模式
@@ -155,17 +141,18 @@ def train_epoch(epoch, wandb, val_loader=None, early_stopping=None):
             # 动作头已包含在统一模型中，无需单独保存
             model.train()
     
+    pbar.close()
     return False  # 返回False表示正常完成
 
 
 def init_model(model_config: VLMConfig):
-    tokenizer = AutoTokenizer.from_pretrained('../model')
+    tokenizer = AutoTokenizer.from_pretrained('model')
     pre_ckp = CKPT_DEFAULT
 
     if not os.path.exists(pre_ckp):
         raise FileNotFoundError(f"未找到固定预训练权重：{pre_ckp}，请确认路径。")
 
-    model = MiniMindVLMWithAction(model_config, vision_model_path="../model/vision_model/clip-vit-base-patch16")
+    model = MiniMindVLMWithAction(model_config, vision_model_path="model/vision_model/clip-vit-base-patch16")
     state_dict = torch.load(pre_ckp, map_location=args.device)
     # 严格匹配当前固定配置；允许缺少 vision_encoder.* 等视觉相关键（strict=False）
     model.load_state_dict(state_dict, strict=False)
@@ -188,8 +175,8 @@ def init_distributed_mode():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MiniMind-V TicTacToe SFT")
-    parser.add_argument("--out_dir", type=str, default="/pub_data/Codes/minimind-v/out")
-    parser.add_argument("--epochs", type=int, default=1)
+    parser.add_argument("--out_dir", type=str, default="VLA/models")
+    parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--learning_rate", type=float, default=1e-5)
     parser.add_argument("--device", type=str, default="cuda:0" if torch.cuda.is_available() else "cpu")
@@ -197,14 +184,13 @@ if __name__ == "__main__":
     parser.add_argument("--use_wandb", default=True, action="store_true")
     parser.add_argument("--wandb_project", type=str, default="MiniMind-V-TTT")
     parser.add_argument("--num_workers", type=int, default=0)
-    parser.add_argument("--data_path", type=str, default="/pub_data/Codes/minimind-v/VLA/data/splits/ttt_train.jsonl", help="训练集jsonl文件路径")
-    parser.add_argument("--val_data_path", type=str, default="/pub_data/Codes/minimind-v/VLA/data/splits/ttt_val.jsonl", help="验证集jsonl文件路径")
-    parser.add_argument("--images_root", type=str, default="/pub_data/Codes/minimind-v/VLA/data/", help="图片根目录（可选）")
+    parser.add_argument("--data_path", type=str, default="VLA/data/ttt_train_alpaca.jsonl", help="训练集jsonl文件路径")
+    parser.add_argument("--val_data_path", type=str, default="VLA/data/ttt_val_alpaca.jsonl", help="验证集jsonl文件路径")
     parser.add_argument("--max_seq_len", type=int, default=MAX_SEQ_LEN, help="训练时最大序列长度（截断），建议 512~2048 之间")
     parser.add_argument("--ddp", action="store_true")
     parser.add_argument("--accumulation_steps", type=int, default=1)
     parser.add_argument("--grad_clip", type=float, default=1.0)
-    parser.add_argument("--log_interval", type=int, default=10)
+    parser.add_argument("--log_interval", type=int, default=1)
     parser.add_argument("--save_interval", type=int, default=100)
     parser.add_argument("--val_interval", type=int, default=50, help="验证间隔步数")
     parser.add_argument("--max_val_steps", type=int, default=50, help="每次验证的最大步数，None表示验证整个验证集")
@@ -260,7 +246,6 @@ if __name__ == "__main__":
         preprocess=preprocess,
         image_special_token=model_config.image_special_token,
         max_length=max_seq_len,
-        images_root=args.images_root,
     )
     train_sampler = DistributedSampler(train_ds) if ddp else None
     train_loader = DataLoader(
@@ -280,7 +265,6 @@ if __name__ == "__main__":
         preprocess=preprocess,
         image_special_token=model_config.image_special_token,
         max_length=max_seq_len,
-        images_root=args.images_root,
     )
     val_sampler = DistributedSampler(val_ds) if ddp else None
     val_loader = DataLoader(
@@ -317,5 +301,4 @@ if __name__ == "__main__":
         # 训练一个epoch，如果早停则退出
         should_stop = train_epoch(epoch, wandb, val_loader, early_stopping)
         if should_stop:
-            Logger("早停触发，训练结束")
             break

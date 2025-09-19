@@ -25,7 +25,7 @@ from PIL import Image
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from model.model_vlm import VLMConfig
-from VLA.model_wrapper import MiniMindVLMWithAction
+from VLA.envs.model_wrapper import MiniMindVLMWithAction
 from VLA.envs.tic_tac_toe_env import TicTacToeEnv, Player
 from transformers import AutoTokenizer
 
@@ -399,7 +399,7 @@ class TicTacToeGame:
 
 def main():
     parser = argparse.ArgumentParser(description="井字棋VLA对战")
-    parser.add_argument("--model_path", type=str, required=True, help="模型文件路径")
+    parser.add_argument("--model_path", type=str,default='VLA/models/sft_vlm_ttt_768.pth', help="模型文件路径")
     parser.add_argument("--device", type=str, default="cuda:0", help="运行设备")
     
     args = parser.parse_args()

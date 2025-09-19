@@ -307,7 +307,7 @@ def build_alpaca_record(image_path: str, sample: Sample, thinking: str, current_
 
 def main():
     parser = argparse.ArgumentParser(description="Generate TicTacToe Alpaca-style dataset")
-    parser.add_argument("--num-samples", type=int, default=10000, help="生成样本数量")
+    parser.add_argument("--num-samples", type=int, default=5000, help="生成样本数量")
     parser.add_argument("--out-dir", type=str, default="VLA/data", help="输出目录")
     parser.add_argument("--prefix", type=str, default="ttt", help="图片与文件前缀")
     parser.add_argument("--seed", type=int, default=42, help="随机种子")

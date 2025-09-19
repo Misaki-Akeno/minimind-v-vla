@@ -129,8 +129,8 @@ dmypy.json
 ehthumbs.db
 Thumbs.db
 .github/
-*.png
 wandb/
 *.pth
-test_results/
+VLA/result/
 VLA/data/
+VLA/models/

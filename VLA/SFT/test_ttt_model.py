@@ -57,12 +57,12 @@ class TicTacToeTester:
         print(f"从 {self.model_path} 加载模型...")
         
         # 初始化tokenizer
-        tokenizer = AutoTokenizer.from_pretrained('../model')
+        tokenizer = AutoTokenizer.from_pretrained('model')
         
         # 初始化模型
         model = MiniMindVLMWithAction(
             self.model_config, 
-            vision_model_path="../model/vision_model/clip-vit-base-patch16"
+            vision_model_path="model/vision_model/clip-vit-base-patch16"
         )
         
         # 加载权重
@@ -80,7 +80,7 @@ class TicTacToeTester:
         _, preprocess = model.vision_encoder, model.processor
         return model, tokenizer, preprocess
     
-    def test_on_dataset(self, test_data_path: str, images_root: str = None, 
+    def test_on_dataset(self, test_data_path: str, 
                        batch_size: int = 32, max_samples: int = None) -> Dict[str, Any]:
         """在测试集上评估模型"""
         print(f"开始在测试集 {test_data_path} 上评估...")
@@ -92,7 +92,6 @@ class TicTacToeTester:
             preprocess=self.preprocess,
             image_special_token=self.model_config.image_special_token,
             max_length=MAX_SEQ_LEN,
-            images_root=images_root,
         )
         
         if max_samples:
@@ -259,20 +258,17 @@ class TicTacToeTester:
 
 def main():
     parser = argparse.ArgumentParser(description="井字棋模型测试")
-    parser.add_argument("--model_path", type=str, required=True, help="模型权重路径")
+    parser.add_argument("--model_path", type=str,default='VLA/models/sft_vlm_ttt_768.pth', help="模型权重路径")
     parser.add_argument("--test_data", type=str, 
-                       default="/pub_data/Codes/minimind-v/VLA/data/splits/ttt_test.jsonl", 
+                       default="VLA/data/ttt_test_alpaca.jsonl", 
                        help="测试数据路径")
-    parser.add_argument("--images_root", type=str, 
-                       default="/pub_data/Codes/minimind-v/VLA/data/", 
-                       help="图片根目录")
     parser.add_argument("--batch_size", type=int, default=32, help="批次大小")
     parser.add_argument("--device", type=str, 
                        default="cuda:0" if torch.cuda.is_available() else "cpu", 
                        help="设备")
     parser.add_argument("--max_samples", type=int, default=None, 
                        help="最大测试样本数，None表示测试全部")
-    parser.add_argument("--output_dir", type=str, default="test_results", 
+    parser.add_argument("--output_dir", type=str, default="VLA/result", 
                        help="结果输出目录")
     
     args = parser.parse_args()
@@ -286,7 +282,6 @@ def main():
     # 运行测试
     results = tester.test_on_dataset(
         test_data_path=args.test_data,
-        images_root=args.images_root,
         batch_size=args.batch_size,
         max_samples=args.max_samples
     )
