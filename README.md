@@ -35,6 +35,7 @@
 
 [报告](./VLA/VLA_FINETUNE_REPORT.md)
 <img width="977" height="676" alt="image" src="https://github.com/user-attachments/assets/5908a184-c77f-4b29-984b-a913581778e4" />
+<img width="1158" height="357" alt="image" src="https://github.com/user-attachments/assets/0ef16278-c4aa-4764-80f4-1b1d04c7e421" />
 
 ## 部署说明
 
