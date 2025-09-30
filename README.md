@@ -36,7 +36,6 @@
 [报告](./VLA/VLA_FINETUNE_REPORT.md)
 <img width="977" height="676" alt="image" src="https://github.com/user-attachments/assets/5908a184-c77f-4b29-984b-a913581778e4" />
 <img width="1158" height="357" alt="image" src="https://github.com/user-attachments/assets/0ef16278-c4aa-4764-80f4-1b1d04c7e421" />
-
 ## 部署说明
 
 ### 环境要求
@@ -82,7 +81,7 @@ conda run --no-capture-output -n minimind-v python VLA/train_ttt_sft.py
 conda run --no-capture-output -n minimind-v python VLA/test_ttt_model.py \
     --model_path out/sft_vlm_ttt_768.pth
 ```
-
+也可以下载预训练模型[huggingface](https://huggingface.co/cxf213/minimind-v-vla/resolve/main/sft_vlm_ttt_768.pth)
 ### 运行游戏
 ```bash
 # 人机对战
