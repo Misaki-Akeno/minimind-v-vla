@@ -134,3 +134,4 @@ wandb/
 VLA/result/
 VLA/data/
 VLA/models/
+**/logs/

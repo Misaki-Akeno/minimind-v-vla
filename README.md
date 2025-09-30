@@ -90,6 +90,13 @@ conda run --no-capture-output -n minimind-v python VLA/play.py \
     --model_path out/sft_vlm_ttt_768.pth
 ```
 
+### 闭环测试
+```bash
+conda run --no-capture-output -n minimind-v python VLA/close_loop_e
+valuation.py \
+    --model_path out/sft_vlm_ttt_768.pth
+```
+
 
 ## 原始项目说明
 * 此项目旨在从0开始，仅用1.3块钱成本 + 1小时！即可训练出26M参数的超小多模态视觉语言模型**MiniMind-V**。
