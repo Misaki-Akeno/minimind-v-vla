@@ -91,9 +91,8 @@ conda run --no-capture-output -n minimind-v python VLA/play.py \
 
 ### 闭环测试
 ```bash
-conda run --no-capture-output -n minimind-v python VLA/close_loop_e
-valuation.py \
-    --model_path out/sft_vlm_ttt_768.pth
+conda run --no-capture-output -n minimind-v python VLA/close_loop_evaluation.py \
+    --model-path out/sft_vlm_ttt_768.pth
 ```
 
 
