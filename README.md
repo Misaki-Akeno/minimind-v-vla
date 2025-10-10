@@ -75,10 +75,10 @@ rm VLA/data/ttt_alpaca.jsonl VLA/data/splits/ttt_test.jsonl VLA/data/splits/ttt_
 python VLA/envs/generate_dataset.py
 
 # 开始训练
-conda run --no-capture-output -n minimind-v python VLA/train_ttt_sft.py
+conda run --no-capture-output -n minimind-v python -m VLA.SFT.train_ttt_sft
 
 # 测试模型
-conda run --no-capture-output -n minimind-v python VLA/test_ttt_model.py \
+conda run --no-capture-output -n minimind-v python -m VLA.SFT.test_ttt_model \
     --model_path out/sft_vlm_ttt_768.pth
 ```
 也可以下载预训练模型[huggingface](https://huggingface.co/cxf213/minimind-v-vla/resolve/main/sft_vlm_ttt_768.pth)
