@@ -32,6 +32,8 @@
 - 💭 **语言推理**：分析当前局面并进行战术思考
 - 🎯 **动作决策**：选择最优的下棋位置
 
+10月新增！PPO训练
+
 
 [报告](./VLA/VLA_FINETUNE_REPORT.md)
 <img width="977" height="676" alt="image" src="https://github.com/user-attachments/assets/5908a184-c77f-4b29-984b-a913581778e4" />
@@ -76,23 +78,30 @@ python VLA/envs/generate_dataset.py
 
 # 开始训练
 conda run --no-capture-output -n minimind-v python -m VLA.SFT.train_ttt_sft
-
+conda run --no-capture-output -n minimind-v python -m VLA.ppo_train \
+    --model-path VLA/models/sft_vlm_ttt_768.pth \
+    --total-updates 50 \
+    --opponent-random-prob 0.05 \
+    --save-path VLA/models/ppo_vlm_ttt.pth
 # 测试模型
 conda run --no-capture-output -n minimind-v python -m VLA.SFT.test_ttt_model \
-    --model_path out/sft_vlm_ttt_768.pth
+    --model_path VLA/models/sft_vlm_ttt_768.pth
 ```
 也可以下载预训练模型[huggingface](https://huggingface.co/cxf213/minimind-v-vla/resolve/main/sft_vlm_ttt_768.pth)
 ### 运行游戏
 ```bash
 # 人机对战
 conda run --no-capture-output -n minimind-v python VLA/play.py \
-    --model_path out/sft_vlm_ttt_768.pth
+    --model_path VLA/models/sft_vlm_ttt_768.pth
 ```
 
 ### 闭环测试
 ```bash
 conda run --no-capture-output -n minimind-v python VLA/close_loop_evaluation.py \
-    --model-path out/sft_vlm_ttt_768.pth
+    --model-path VLA/models/ppo_vlm_ttt.pth \
+    --games 50 \
+    --agent-role both \
+    --opponent medium
 ```
 
 

@@ -176,7 +176,7 @@ def init_distributed_mode():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MiniMind-V TicTacToe SFT")
     parser.add_argument("--out_dir", type=str, default="VLA/models")
-    parser.add_argument("--epochs", type=int, default=3)
+    parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--learning_rate", type=float, default=1e-5)
     parser.add_argument("--device", type=str, default="cuda:0" if torch.cuda.is_available() else "cpu")
@@ -253,7 +253,7 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         pin_memory=True,
         drop_last=False,
-        shuffle=False,
+        shuffle=(train_sampler is None),
         num_workers=args.num_workers,
         sampler=train_sampler,
     )

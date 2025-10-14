@@ -49,6 +49,11 @@ class TicTacToeVLMDataset(Dataset):
         self.image_token = image_special_token
         self.images_root = images_root
 
+        # ensure padding token exists for mask truncation
+        if self.tokenizer.pad_token_id is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.pad_id = self.tokenizer.pad_token_id
+
         # special token ids used to构造loss mask（与现有实现一致）
         self.bos_id = tokenizer('<|im_start|>assistant', add_special_tokens=False).input_ids
         self.eos_id = tokenizer('<|im_end|>', add_special_tokens=False).input_ids
@@ -90,10 +95,13 @@ class TicTacToeVLMDataset(Dataset):
         # 最后返回原始（可能不存在），由上层失败时提示
         return image_path
 
-    def _create_prompt(self, instruction: str, user_input: str) -> str:
+    def _create_prompt(self, instruction: str, user_input: str, current_player: str) -> str:
+        player_line = self._format_player_line(current_player)
         # 将占位 <image> 放在最前，紧接指令和可选输入，便于模型对齐
         # 注意：后续会把 <image> 替换为图像特殊 token 序列
         content_parts = ["<image>", instruction.strip() if instruction else ""]
+        if player_line:
+            content_parts.append(player_line)
         if user_input:
             content_parts.append(user_input.strip())
         content = "\n".join([p for p in content_parts if p])
@@ -109,6 +117,12 @@ class TicTacToeVLMDataset(Dataset):
         )
         return prompt
 
+    def _format_player_line(self, current_player: str) -> str:
+        player = (current_player or "").strip().upper()
+        if player not in {"X", "O"}:
+            return "当前轮到你落子，请选择最佳位置。"
+        return f"当前轮到 {player} 落子，请为 {player} 选择最佳落子位置。"
+
     def _generate_loss_mask(self, input_ids: List[int]) -> List[int]:
         # 与 dataset/lm_dataset.py 中逻辑一致：仅在 assistant 段计算 loss
         loss_mask = [0] * len(input_ids)
@@ -120,8 +134,12 @@ class TicTacToeVLMDataset(Dataset):
                 while end < len(input_ids):
                     if input_ids[end:end + len(self.eos_id)] == self.eos_id:
                         break
+                    if self.pad_id is not None and input_ids[end] == self.pad_id:
+                        break
                     end += 1
-                for j in range(start + 1, min(end + len(self.eos_id) + 1, self.max_length)):
+                for j in range(start + 1, min(end + len(self.eos_id), len(input_ids))):
+                    if self.pad_id is not None and input_ids[j] == self.pad_id:
+                        break
                     loss_mask[j] = 1
                 i = end + len(self.eos_id) if end < len(input_ids) else len(input_ids)
             else:
@@ -135,19 +153,24 @@ class TicTacToeVLMDataset(Dataset):
         target: str = sample.get('output', '')
         image_path: str = sample.get('image_path', '')
 
+        meta: Dict[str, Any] = sample.get('meta') or {}
+        current_player = meta.get('current_player', 'O')
+
         # 1) prompt（仅包含 user 段，assistant 留生成提示）
-        prompt = self._create_prompt(instruction, user_input)
+        prompt = self._create_prompt(instruction, user_input, current_player)
 
         # 2) 将 assistant 回复（目标）拼接到 prompt 后，使用 chat 模板的一致前后缀
         # 这里直接接上 target，确保训练时标签覆盖 assistant 段
-        full_text = prompt + target
+        target_text = target if isinstance(target, str) else json.dumps(target, ensure_ascii=False)
+        target_text = target_text.strip()
+        full_text = prompt + target_text + '<|im_end|>'
 
         tokenized = self.tokenizer(full_text)
         input_ids = tokenized.input_ids[: self.max_length]
         # padding
         pad_len = self.max_length - len(input_ids)
         if pad_len > 0:
-            input_ids = input_ids + [self.tokenizer.pad_token_id] * pad_len
+            input_ids = input_ids + [self.pad_id] * pad_len
 
         loss_mask_list = self._generate_loss_mask(input_ids)
 

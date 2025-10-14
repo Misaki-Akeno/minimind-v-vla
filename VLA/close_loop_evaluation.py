@@ -152,13 +152,14 @@ def optimal_action(board: np.ndarray, player: Player) -> int:
     return int(best_action)
 
 
-def build_prompt(tokenizer, image_token: str, board: np.ndarray) -> torch.Tensor:
+def build_prompt(tokenizer, image_token: str, board: np.ndarray, player: Player) -> torch.Tensor:
     instruction = (
         "你是一名井字棋智能体。根据图像与棋盘描述判断当前局面，"
         "仅输出 JSON {\"thinking\": string, \"action\": [row, col]}。"
     )
-    description = f"当前棋盘: {format_board_text(board)}。请为 O 选择最优落子位置。"
-    content = "\n".join(["<image>", instruction, description])
+    description = f"当前棋盘: {format_board_text(board)}。"
+    player_line = f"当前轮到 {player.name} 落子，请为 {player.name} 选择最优落子位置。"
+    content = "\n".join(["<image>", instruction, description, player_line])
     messages = [{"role": "user", "content": content.replace("<image>", image_token)}]
     prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     return tokenizer(prompt, return_tensors="pt").input_ids
@@ -177,6 +178,18 @@ def mask_invalid(logits: torch.Tensor, board: np.ndarray) -> torch.Tensor:
     return masked
 
 
+def select_opponent_action(env: TicTacToeEnv, opponent_mode: str, player: Player) -> int:
+    if opponent_mode == "optimal":
+        return optimal_action(env.board.copy(), player)
+
+    action = env._get_ai_action()
+    if action is not None:
+        return action
+
+    valid = env._get_valid_actions()
+    return int(random.choice(valid)) if valid else 0
+
+
 def run_episode(
     env: TicTacToeEnv,
     model: MiniMindVLMWithAction,
@@ -184,18 +197,26 @@ def run_episode(
     image_token: str,
     device: torch.device,
     temperature: float,
+    opponent_mode: str,
+    agent_player: Player,
 ) -> str:
     obs, _ = env.reset()
     env.use_internal_ai = False
+
+    if agent_player == Player.O:
+        first_move = select_opponent_action(env, opponent_mode, Player.X)
+        obs, _, terminated, truncated, _ = env.step(first_move)
+        if terminated or truncated:
+            if env.winner == Player.X:
+                return "loss"
+            return "draw"
 
     while True:
         current_player = env.current_player
         board_copy = env.board.copy()
 
-        if current_player == Player.X:
-            action = optimal_action(board_copy, Player.X)
-        else:
-            input_ids = build_prompt(tokenizer, image_token, board_copy).to(device)
+        if current_player == agent_player:
+            input_ids = build_prompt(tokenizer, image_token, board_copy, agent_player).to(device)
             pil_image = board_to_image(obs)
             pixel_values = model.processor(images=pil_image, return_tensors="pt").pixel_values
             pixel_values = pixel_values.unsqueeze(1).to(device)
@@ -205,7 +226,8 @@ def run_episode(
             logits = outputs.action_logits.squeeze(0)
             logits = logits / max(temperature, 1e-5)
             masked_logits = mask_invalid(logits, env.board)
-            action = int(masked_logits.argmax().item())
+            action_tensor = torch.argmax(masked_logits)
+            action = int(action_tensor.item())
             r, c = divmod(action, 3)
             if env.board[r, c] != Player.EMPTY.value:
                 valid = np.where(env.board.flatten() == Player.EMPTY.value)[0]
@@ -213,15 +235,17 @@ def run_episode(
                     action = 0
                 else:
                     action = int(random.choice(valid))
+        else:
+            action = select_opponent_action(env, opponent_mode, current_player)
 
         obs, _, terminated, truncated, _ = env.step(action)
 
         if terminated or truncated:
-            if env.winner == Player.O:
+            if env.winner == agent_player:
                 return "win"
-            if env.winner == Player.X:
-                return "loss"
-            return "draw"
+            if env.winner is None or env.winner == Player.EMPTY:
+                return "draw"
+            return "loss"
 
 
 def main() -> None:
@@ -232,6 +256,8 @@ def main() -> None:
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--device", type=str, default="cuda:0" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--board-size", type=int, default=300)
+    parser.add_argument("--agent-role", type=str, choices=["O", "X", "both"], default="both")
+    parser.add_argument("--opponent", type=str, choices=["optimal", "hard", "medium", "random"], default="medium")
     args = parser.parse_args()
 
     random.seed(args.seed)
@@ -256,30 +282,64 @@ def main() -> None:
     model.to(device)
     model.eval()
 
+    opponent_mode = args.opponent.lower()
+    difficulty_map = {
+        "hard": Difficulty.HARD,
+        "medium": Difficulty.MEDIUM,
+        "random": Difficulty.RANDOM,
+    }
+    env_difficulty = difficulty_map.get(opponent_mode, Difficulty.HARD)
+
     env = TicTacToeEnv(
         render_mode="rgb_array",
-        difficulty=Difficulty.HARD,
+        difficulty=env_difficulty,
         board_size=args.board_size,
         use_internal_ai=False,
     )
 
     stats = GameStats()
+    role_stats = {
+        Player.X: GameStats(),
+        Player.O: GameStats(),
+    }
     image_token = config.image_special_token
 
+    role_option = args.agent_role.lower()
+
     for _ in trange(args.games, desc="Evaluating"):
-        result = run_episode(env, model, tokenizer, image_token, device, args.temperature)
+        if role_option == "x":
+            agent_player = Player.X
+        elif role_option == "o":
+            agent_player = Player.O
+        else:
+            agent_player = random.choice([Player.X, Player.O])
+
+        result = run_episode(env, model, tokenizer, image_token, device, args.temperature, opponent_mode, agent_player)
         if result == "win":
             stats.wins += 1
+            role_stats[agent_player].wins += 1
         elif result == "loss":
             stats.losses += 1
+            role_stats[agent_player].losses += 1
         else:
             stats.draws += 1
+            role_stats[agent_player].draws += 1
 
     print("\n=== Evaluation Summary ===")
     print(f"Games       : {stats.total}")
     print(f"Wins        : {stats.wins} ({stats.win_rate:.2%})")
     print(f"Draws       : {stats.draws} ({stats.draw_rate:.2%})")
     print(f"Losses      : {stats.losses} ({stats.loss_rate:.2%})")
+
+    if role_option == "both":
+        for role in (Player.X, Player.O):
+            role_stat = role_stats[role]
+            if role_stat.total == 0:
+                continue
+            print(
+                f"Role {role.name}: W {role_stat.wins} / D {role_stat.draws} / L {role_stat.losses}"
+                f" (Win {role_stat.win_rate:.2%}, Draw {role_stat.draw_rate:.2%})"
+            )
 
 
 if __name__ == "__main__":
