@@ -625,12 +625,12 @@ def main() -> None:
         if wandb_run is not None:
             wandb.log(
                 {
-                    "update": update + 1,
-                    "avg_reward": avg_reward,
-                    "policy_loss": stats["policy_loss"],
-                    "value_loss": stats["value_loss"],
-                    "entropy": stats["entropy"],
-                    "rollout_steps": cfg.rollout_steps,
+                    "PPO/update": update + 1,
+                    "PPO/avg_reward": avg_reward,
+                    "PPO/policy_loss": stats["policy_loss"],
+                    "PPO/value_loss": stats["value_loss"],
+                    "PPO/entropy": stats["entropy"],
+                    "PPO/rollout_steps": cfg.rollout_steps,
                 },
                 step=update + 1,
             )
