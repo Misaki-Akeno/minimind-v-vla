@@ -32,12 +32,13 @@
 - 💭 **语言推理**：分析当前局面并进行战术思考
 - 🎯 **动作决策**：选择最优的下棋位置
 
-10月新增！PPO训练
-
+10月新增！PPO训练提供了有效的性能提升，不过和seed关系较大。
 
 [报告](./VLA/VLA_FINETUNE_REPORT.md)
 <img width="977" height="676" alt="image" src="https://github.com/user-attachments/assets/5908a184-c77f-4b29-984b-a913581778e4" />
 <img width="1158" height="357" alt="image" src="https://github.com/user-attachments/assets/0ef16278-c4aa-4764-80f4-1b1d04c7e421" />
+<img width="1166" height="775" alt="image" src="https://github.com/user-attachments/assets/6669e7dd-f2e0-4313-9c6b-f3af5068aa4f" />
+
 ## 部署说明
 
 ### 环境要求
@@ -80,14 +81,14 @@ python VLA/envs/generate_dataset.py
 conda run --no-capture-output -n minimind-v python -m VLA.SFT.train_ttt_sft
 conda run --no-capture-output -n minimind-v python -m VLA.ppo_train \
     --model-path VLA/models/sft_vlm_ttt_768.pth \
-    --total-updates 50 \
+    --total-updates 200 \
     --opponent-random-prob 0.05 \
     --save-path VLA/models/ppo_vlm_ttt.pth
 # 测试模型
 conda run --no-capture-output -n minimind-v python -m VLA.SFT.test_ttt_model \
     --model_path VLA/models/sft_vlm_ttt_768.pth
 ```
-也可以下载预训练模型[huggingface](https://huggingface.co/cxf213/minimind-v-vla/resolve/main/sft_vlm_ttt_768.pth)
+也可以下载预训练模型[huggingface](https://huggingface.co/cxf213/minimind-v-vla/) 
 ### 运行游戏
 ```bash
 # 人机对战
